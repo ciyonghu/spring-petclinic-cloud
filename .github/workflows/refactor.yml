@@ -1,0 +1,89 @@
+name: OpenRewrite Refactor (Enhanced)
+on:
+  workflow_dispatch:
+    inputs:
+      commit_message:
+        description: 'Commit message for the refactoring'
+        required: true
+        default: 'Refactor: Rename packages using OpenRewrite'
+permissions:
+  contents: write
+jobs:
+  refactor:
+    runs-on: ubuntu-latest
+    env:
+      OLD_PKG: "org.springframework.samples"
+      NEW_PKG: "com.mycompany.samples"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'maven'
+      
+      - name: Create rewrite.yml configuration
+        run: |
+          cat <<EOF > rewrite.yml
+          ---
+          type: specs.openrewrite.org/v1beta/recipe
+          name: com.github.actions.RefactorPackagesComplete
+          displayName: Complete Package Refactoring
+          description: Renames packages and updates POM groupIds
+          recipeList:
+            # 1. 修改 Java 代码中的包名
+            - org.openrewrite.java.ChangePackage:
+                oldPackageName: ${OLD_PKG}
+                newPackageName: ${NEW_PKG}
+                recursive: true
+            
+            # 2. 修改 POM 文件中的 groupId
+            - org.openrewrite.maven.ChangeParentPom:
+                oldGroupId: ${OLD_PKG}
+                newGroupId: ${NEW_PKG}
+                allowVersionDowngrade: true
+            
+            # 3. 修改项目本身的 groupId
+            - org.openrewrite.maven.ChangeProjectGroupId:
+                oldGroupId: ${OLD_PKG}
+                newGroupId: ${NEW_PKG}
+            
+            # 4. 修改依赖中的 groupId
+            - org.openrewrite.maven.ChangeDependencyGroupIdAndArtifactId:
+                oldGroupId: ${OLD_PKG}
+                newGroupId: ${NEW_PKG}
+          EOF
+          
+          echo "Generated rewrite.yml content:"
+          cat rewrite.yml
+      
+      - name: Run OpenRewrite
+        run: |
+          mvn -U org.openrewrite.maven:rewrite-maven-plugin:5.42.0:run \
+            -Drewrite.configLocation=rewrite.yml \
+            -Drewrite.activeRecipes=com.github.actions.RefactorPackagesComplete
+      
+      - name: Additional text replacements in resources
+        run: |
+          # 使用 find + sed 替换资源文件中的包名引用
+          # 处理 .yml, .yaml, .properties, .xml 文件
+          find . -type f \( -name "*.yml" -o -name "*.yaml" -o -name "*.properties" -o -name "*.xml" \) \
+            -not -path "*/target/*" \
+            -not -path "*/.git/*" \
+            -not -path "*/node_modules/*" \
+            -exec sed -i 's|${OLD_PKG}|${NEW_PKG}|g' {} +
+          
+          echo "Completed text replacement in resource files"
+      
+      - name: Cleanup
+        run: rm rewrite.yml
+      
+      - name: Commit and Push changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: ${{ inputs.commit_message }}
+          branch: ${{ github.ref }}
+          file_pattern: .
