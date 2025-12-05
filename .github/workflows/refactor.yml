@@ -70,20 +70,29 @@ jobs:
         run: |
           # 使用 find + sed 替换资源文件中的包名引用
           # 处理 .yml, .yaml, .properties, .xml 文件
+          # 排除 .github 目录避免修改 workflow 文件
           find . -type f \( -name "*.yml" -o -name "*.yaml" -o -name "*.properties" -o -name "*.xml" \) \
             -not -path "*/target/*" \
             -not -path "*/.git/*" \
+            -not -path "*/.github/*" \
             -not -path "*/node_modules/*" \
-            -exec sed -i 's|${OLD_PKG}|${NEW_PKG}|g' {} +
+            -exec sed -i "s|${OLD_PKG}|${NEW_PKG}|g" {} +
           
           echo "Completed text replacement in resource files"
       
       - name: Cleanup
         run: rm rewrite.yml
       
+      # 确保 workflow 文件没有被修改
+      - name: Restore workflow files
+        run: |
+          git checkout HEAD -- .github/ 2>/dev/null || true
+          echo "Workflow files protected from modification"
+      
       - name: Commit and Push changes
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: ${{ inputs.commit_message }}
           branch: ${{ github.ref }}
-          file_pattern: .
+          # 排除 .github 目录,只提交其他文件
+          file_pattern: ':!.github/**'
