@@ -11,7 +11,7 @@
 		<relativePath/>
 	</parent>
 
-	<groupId>org.springframework.samples.petclinic.client</groupId>
+	<groupId>com.mycompany.samples.petclinic.client</groupId>
 	<artifactId>spring-petclinic-customers-service</artifactId>
 	<packaging>jar</packaging>
 	<description>Spring PetClinic Customers Service</description>

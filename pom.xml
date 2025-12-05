@@ -10,7 +10,7 @@
 		<version>2.6.3</version>
 	</parent>
 
-	<groupId>org.springframework.samples</groupId>
+	<groupId>com.mycompany.samples</groupId>
 	<artifactId>spring-petclinic-cloud</artifactId>
 	<name>${project.artifactId}</name>
 	<packaging>pom</packaging>
